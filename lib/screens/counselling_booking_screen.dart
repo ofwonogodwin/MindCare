@@ -18,6 +18,7 @@ class CounsellingBookingScreen extends StatefulWidget {
 class _CounsellingBookingScreenState extends State<CounsellingBookingScreen> {
   final _repository = const MindCareRepository();
   final _reasonController = TextEditingController();
+
   final List<String> _slots = const [
     '9:00 AM',
     '10:00 AM',
@@ -78,6 +79,7 @@ class _CounsellingBookingScreenState extends State<CounsellingBookingScreen> {
     final counselor = _counselors.firstWhere(
       (item) => item.id == _selectedCounselorId,
     );
+
     Navigator.pushNamed(
       context,
       AppRoutes.appointmentConfirmation,
@@ -93,6 +95,10 @@ class _CounsellingBookingScreenState extends State<CounsellingBookingScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final counselor = _counselors.firstWhere(
+      (item) => item.id == _selectedCounselorId,
+    );
+
     return Scaffold(
       appBar: AppBar(title: const Text('Book an Appointment')),
       backgroundColor: AppColors.backgroundWhite,
@@ -116,11 +122,10 @@ class _CounsellingBookingScreenState extends State<CounsellingBookingScreen> {
               itemCount: _counselors.length,
               separatorBuilder: (_, _) => const SizedBox(width: 10),
               itemBuilder: (context, index) {
-                final counselor = _counselors[index];
-                final selected = counselor.id == _selectedCounselorId;
+                final item = _counselors[index];
+                final selected = item.id == _selectedCounselorId;
                 return GestureDetector(
-                  onTap: () =>
-                      setState(() => _selectedCounselorId = counselor.id),
+                  onTap: () => setState(() => _selectedCounselorId = item.id),
                   child: Container(
                     width: 220,
                     padding: const EdgeInsets.all(14),
@@ -137,20 +142,20 @@ class _CounsellingBookingScreenState extends State<CounsellingBookingScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          counselor.name,
+                          item.name,
                           style: const TextStyle(fontWeight: FontWeight.w700),
                         ),
                         const SizedBox(height: 4),
-                        Text(counselor.specialization),
+                        Text(item.specialization),
                         const SizedBox(height: 8),
                         Text(
-                          counselor.bio,
+                          item.bio,
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                         ),
                         const Spacer(),
                         Text(
-                          'Next: ${counselor.nextSlot}',
+                          'Next: ${item.nextSlot}',
                           style: const TextStyle(fontWeight: FontWeight.w600),
                         ),
                       ],
@@ -194,26 +199,27 @@ class _CounsellingBookingScreenState extends State<CounsellingBookingScreen> {
             'Appointment Type',
             style: TextStyle(fontWeight: FontWeight.w700),
           ),
-          RadioListTile<String>(
-            title: const Text('Video Call'),
-            value: 'Video Call',
+          RadioGroup<String>(
             groupValue: _appointmentType,
-            onChanged: (value) =>
-                setState(() => _appointmentType = value ?? 'Video Call'),
-          ),
-          RadioListTile<String>(
-            title: const Text('Chat Session'),
-            value: 'Chat Session',
-            groupValue: _appointmentType,
-            onChanged: (value) =>
-                setState(() => _appointmentType = value ?? 'Chat Session'),
-          ),
-          RadioListTile<String>(
-            title: const Text('Phone Call'),
-            value: 'Phone Call',
-            groupValue: _appointmentType,
-            onChanged: (value) =>
-                setState(() => _appointmentType = value ?? 'Phone Call'),
+            onChanged: (value) {
+              setState(() => _appointmentType = value ?? 'Chat Session');
+            },
+            child: const Column(
+              children: [
+                RadioListTile<String>(
+                  title: Text('Video Call'),
+                  value: 'Video Call',
+                ),
+                RadioListTile<String>(
+                  title: Text('Chat Session'),
+                  value: 'Chat Session',
+                ),
+                RadioListTile<String>(
+                  title: Text('Phone Call'),
+                  value: 'Phone Call',
+                ),
+              ],
+            ),
           ),
           TextField(
             controller: _reasonController,
@@ -234,9 +240,7 @@ class _CounsellingBookingScreenState extends State<CounsellingBookingScreen> {
                     'Booking Summary',
                     style: TextStyle(fontWeight: FontWeight.w700),
                   ),
-                  Text(
-                    'Counselor: ${_counselors.firstWhere((item) => item.id == _selectedCounselorId).name}',
-                  ),
+                  Text('Counselor: ${counselor.name}'),
                   Text(
                     'Date: ${_selectedDate == null ? 'Not selected' : DateFormat('EEE, MMM d').format(_selectedDate!)}',
                   ),
