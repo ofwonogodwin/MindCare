@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 
+import '../core/constants/app_routes.dart';
+import '../data/repositories/mindcare_repository.dart';
+import '../domain/entities/counselor.dart';
 import '../utils/app_colors.dart';
+import '../widgets/developed_by_footer.dart';
 
 class CounsellingBookingScreen extends StatefulWidget {
   const CounsellingBookingScreen({super.key});
@@ -11,172 +16,244 @@ class CounsellingBookingScreen extends StatefulWidget {
 }
 
 class _CounsellingBookingScreenState extends State<CounsellingBookingScreen> {
-  final List<Counsellor> _counsellors = const [
-    Counsellor(
-      name: 'Dr. Sarah Mensah',
-      specialty: 'Anxiety & Stress Management',
-      dates: ['Apr 05', 'Apr 07', 'Apr 10'],
-    ),
-    Counsellor(
-      name: 'Dr. Daniel Kofi',
-      specialty: 'Academic Burnout Support',
-      dates: ['Apr 06', 'Apr 09', 'Apr 11'],
-    ),
-    Counsellor(
-      name: 'Dr. Irene Boateng',
-      specialty: 'Relationship & Emotional Wellness',
-      dates: ['Apr 08', 'Apr 12', 'Apr 14'],
-    ),
+  final _repository = const MindCareRepository();
+  final _reasonController = TextEditingController();
+  final List<String> _slots = const [
+    '9:00 AM',
+    '10:00 AM',
+    '11:00 AM',
+    '1:00 PM',
+    '2:00 PM',
+    '3:00 PM',
+    '4:00 PM',
+    '5:00 PM',
+    '6:00 PM',
+    '7:00 PM',
   ];
 
-  String? _selectedCounsellor;
-  String? _selectedDate;
+  int _selectedCounselorId = 1;
+  DateTime? _selectedDate;
+  String? _selectedTime;
+  String _appointmentType = 'Chat Session';
 
-  void _bookSession() {
-    if (_selectedCounsellor == null || _selectedDate == null) {
+  List<Counselor> get _counselors => _repository.counselors();
+
+  @override
+  void dispose() {
+    _reasonController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _pickDate() async {
+    final picked = await showDatePicker(
+      context: context,
+      firstDate: DateTime.now(),
+      lastDate: DateTime.now().add(const Duration(days: 60)),
+      initialDate: DateTime.now().add(const Duration(days: 1)),
+    );
+    if (picked == null) return;
+    setState(() => _selectedDate = picked);
+  }
+
+  Future<void> _bookSession() async {
+    if (_selectedDate == null || _selectedTime == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Please choose a counselor and a date first.'),
+          content: Text('Please choose counselor, date, and time.'),
         ),
       );
       return;
     }
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          'Session booked with $_selectedCounsellor on $_selectedDate.',
-        ),
-      ),
+    final reference = await _repository.createAppointment(
+      userId: 1,
+      counselorId: _selectedCounselorId,
+      date: _selectedDate!,
+      time: _selectedTime!,
+      type: _appointmentType,
+      reason: _reasonController.text.trim(),
+    );
+
+    if (!mounted) return;
+    final counselor = _counselors.firstWhere(
+      (item) => item.id == _selectedCounselorId,
+    );
+    Navigator.pushNamed(
+      context,
+      AppRoutes.appointmentConfirmation,
+      arguments: {
+        'reference': reference,
+        'counselor': counselor.name,
+        'date': DateFormat('EEE, MMM d').format(_selectedDate!),
+        'time': _selectedTime,
+        'type': _appointmentType,
+      },
     );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Counselling Booking')),
+      appBar: AppBar(title: const Text('Book an Appointment')),
       backgroundColor: AppColors.backgroundWhite,
-      body: ListView.builder(
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 110),
-        itemCount: _counsellors.length,
-        itemBuilder: (context, index) {
-          final counsellor = _counsellors[index];
-          final isSelected = _selectedCounsellor == counsellor.name;
-
-          return Card(
-            margin: const EdgeInsets.only(bottom: 14),
-            elevation: 3,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(18),
-              side: BorderSide(
-                color: isSelected
-                    ? AppColors.primaryTeal
-                    : AppColors.secondaryBlue.withValues(alpha: 0.35),
-              ),
+      body: ListView(
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+        children: [
+          const Text(
+            'All information stays confidential.',
+            style: TextStyle(color: Colors.black54),
+          ),
+          const SizedBox(height: 10),
+          const Text(
+            'Select a counselor',
+            style: TextStyle(fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: 8),
+          SizedBox(
+            height: 170,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              itemCount: _counselors.length,
+              separatorBuilder: (_, _) => const SizedBox(width: 10),
+              itemBuilder: (context, index) {
+                final counselor = _counselors[index];
+                final selected = counselor.id == _selectedCounselorId;
+                return GestureDetector(
+                  onTap: () =>
+                      setState(() => _selectedCounselorId = counselor.id),
+                  child: Container(
+                    width: 220,
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: selected
+                            ? AppColors.primaryTeal
+                            : Colors.black12,
+                      ),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          counselor.name,
+                          style: const TextStyle(fontWeight: FontWeight.w700),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(counselor.specialization),
+                        const SizedBox(height: 8),
+                        Text(
+                          counselor.bio,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const Spacer(),
+                        Text(
+                          'Next: ${counselor.nextSlot}',
+                          style: const TextStyle(fontWeight: FontWeight.w600),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
             ),
+          ),
+          const SizedBox(height: 16),
+          OutlinedButton.icon(
+            onPressed: _pickDate,
+            icon: const Icon(Icons.calendar_month_outlined),
+            label: Text(
+              _selectedDate == null
+                  ? 'Select Date'
+                  : DateFormat('EEE, MMM d').format(_selectedDate!),
+            ),
+          ),
+          const SizedBox(height: 12),
+          const Text(
+            'Select a time slot',
+            style: TextStyle(fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: _slots
+                .map(
+                  (slot) => ChoiceChip(
+                    label: Text(slot),
+                    selected: _selectedTime == slot,
+                    onSelected: (_) => setState(() => _selectedTime = slot),
+                  ),
+                )
+                .toList(),
+          ),
+          const SizedBox(height: 14),
+          const Text(
+            'Appointment Type',
+            style: TextStyle(fontWeight: FontWeight.w700),
+          ),
+          RadioListTile<String>(
+            title: const Text('Video Call'),
+            value: 'Video Call',
+            groupValue: _appointmentType,
+            onChanged: (value) =>
+                setState(() => _appointmentType = value ?? 'Video Call'),
+          ),
+          RadioListTile<String>(
+            title: const Text('Chat Session'),
+            value: 'Chat Session',
+            groupValue: _appointmentType,
+            onChanged: (value) =>
+                setState(() => _appointmentType = value ?? 'Chat Session'),
+          ),
+          RadioListTile<String>(
+            title: const Text('Phone Call'),
+            value: 'Phone Call',
+            groupValue: _appointmentType,
+            onChanged: (value) =>
+                setState(() => _appointmentType = value ?? 'Phone Call'),
+          ),
+          TextField(
+            controller: _reasonController,
+            maxLines: 2,
+            decoration: const InputDecoration(
+              labelText: 'Reason for visit (optional)',
+              hintText: "Briefly share what's on your mind...",
+            ),
+          ),
+          const SizedBox(height: 14),
+          Card(
             child: Padding(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(12),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    children: [
-                      CircleAvatar(
-                        backgroundColor: AppColors.accentGreen.withValues(
-                          alpha: 0.5,
-                        ),
-                        child: const Icon(
-                          Icons.person,
-                          color: AppColors.primaryTeal,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              counsellor.name,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w700,
-                                fontSize: 16,
-                              ),
-                            ),
-                            Text(
-                              counsellor.specialty,
-                              style: const TextStyle(color: Colors.black54),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
                   const Text(
-                    'Available Dates',
-                    style: TextStyle(fontWeight: FontWeight.w600),
+                    'Booking Summary',
+                    style: TextStyle(fontWeight: FontWeight.w700),
                   ),
-                  const SizedBox(height: 8),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: counsellor.dates.map((date) {
-                      final selectedForDate =
-                          isSelected && _selectedDate == date;
-                      return ChoiceChip(
-                        label: Text(date),
-                        selected: selectedForDate,
-                        onSelected: (_) {
-                          setState(() {
-                            _selectedCounsellor = counsellor.name;
-                            _selectedDate = date;
-                          });
-                        },
-                        selectedColor: AppColors.secondaryBlue.withValues(
-                          alpha: 0.4,
-                        ),
-                        labelStyle: TextStyle(
-                          color: selectedForDate
-                              ? AppColors.primaryTeal
-                              : Colors.black87,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      );
-                    }).toList(),
+                  Text(
+                    'Counselor: ${_counselors.firstWhere((item) => item.id == _selectedCounselorId).name}',
                   ),
+                  Text(
+                    'Date: ${_selectedDate == null ? 'Not selected' : DateFormat('EEE, MMM d').format(_selectedDate!)}',
+                  ),
+                  Text('Time: ${_selectedTime ?? 'Not selected'}'),
+                  Text('Type: $_appointmentType'),
                 ],
               ),
             ),
-          );
-        },
-      ),
-      bottomSheet: Container(
-        color: Colors.white,
-        padding: const EdgeInsets.fromLTRB(16, 10, 16, 18),
-        child: SafeArea(
-          top: false,
-          child: SizedBox(
-            width: double.infinity,
-            child: ElevatedButton.icon(
-              onPressed: _bookSession,
-              icon: const Icon(Icons.event_available_outlined),
-              label: const Text('Book Session'),
-            ),
           ),
-        ),
+          const SizedBox(height: 8),
+          ElevatedButton(
+            onPressed: _bookSession,
+            child: const Text('Schedule Session'),
+          ),
+          const DevelopedByFooter(),
+        ],
       ),
     );
   }
-}
-
-class Counsellor {
-  const Counsellor({
-    required this.name,
-    required this.specialty,
-    required this.dates,
-  });
-
-  final String name;
-  final String specialty;
-  final List<String> dates;
 }

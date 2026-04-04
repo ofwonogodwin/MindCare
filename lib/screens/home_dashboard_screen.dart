@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 
+import '../core/constants/app_routes.dart';
+import '../presentation/controllers/app_session_controller.dart';
 import '../utils/app_colors.dart';
+import '../widgets/developed_by_footer.dart';
 
 class HomeDashboardScreen extends StatefulWidget {
   const HomeDashboardScreen({super.key});
@@ -11,6 +15,27 @@ class HomeDashboardScreen extends StatefulWidget {
 
 class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
   int _selectedBottomIndex = 0;
+  int? _selectedMood;
+  String _displayName = 'there';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSession();
+  }
+
+  Future<void> _loadSession() async {
+    final name = await AppSessionController.displayName();
+    if (!mounted) return;
+    setState(() => _displayName = name);
+  }
+
+  String get _greeting {
+    final hour = DateTime.now().hour;
+    if (hour < 12) return 'Good morning';
+    if (hour < 17) return 'Good afternoon';
+    return 'Good evening';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -22,13 +47,27 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Welcome back, Student!',
+            Text(
+              '$_greeting, $_displayName',
               style: TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.w700,
                 color: AppColors.textDark,
               ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              DateFormat.yMMMMEEEEd().format(DateTime.now()),
+              style: const TextStyle(color: Colors.black54),
+            ),
+            const SizedBox(height: 10),
+            const Text(
+              'You are not alone. Every step counts.',
+              style: TextStyle(fontWeight: FontWeight.w600),
+            ),
+            const Text(
+              'All conversations are private.',
+              style: TextStyle(color: Colors.black54),
             ),
             const SizedBox(height: 16),
             Card(
@@ -36,19 +75,77 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(20),
               ),
-              child: const Padding(
+              child: Padding(
                 padding: EdgeInsets.all(16),
-                child: Row(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Icon(Icons.mood, color: AppColors.primaryTeal, size: 30),
-                    SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        'Mood Tracker\nHow are you feeling today?',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.mood,
+                          color: AppColors.primaryTeal,
+                          size: 30,
                         ),
+                        SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            'How are you feeling today?',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 10),
+                    Wrap(
+                      spacing: 8,
+                      children: [
+                        _MoodChip(
+                          index: 5,
+                          label: 'Great',
+                          selectedMood: _selectedMood,
+                          onSelected: (value) =>
+                              setState(() => _selectedMood = value),
+                        ),
+                        _MoodChip(
+                          index: 4,
+                          label: 'Okay',
+                          selectedMood: _selectedMood,
+                          onSelected: (value) =>
+                              setState(() => _selectedMood = value),
+                        ),
+                        _MoodChip(
+                          index: 3,
+                          label: 'Neutral',
+                          selectedMood: _selectedMood,
+                          onSelected: (value) =>
+                              setState(() => _selectedMood = value),
+                        ),
+                        _MoodChip(
+                          index: 2,
+                          label: 'Low',
+                          selectedMood: _selectedMood,
+                          onSelected: (value) =>
+                              setState(() => _selectedMood = value),
+                        ),
+                        _MoodChip(
+                          index: 1,
+                          label: 'Struggling',
+                          selectedMood: _selectedMood,
+                          onSelected: (value) =>
+                              setState(() => _selectedMood = value),
+                        ),
+                      ],
+                    ),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: TextButton(
+                        onPressed: () =>
+                            Navigator.pushNamed(context, AppRoutes.moodTracker),
+                        child: const Text('Open full mood tracker'),
                       ),
                     ),
                   ],
@@ -72,31 +169,97 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
                 _QuickCard(
                   title: 'Book Session',
                   icon: Icons.calendar_today_outlined,
-                  onTap: () => Navigator.pushNamed(context, '/booking'),
+                  onTap: () => Navigator.pushNamed(context, AppRoutes.booking),
                 ),
                 _QuickCard(
                   title: 'Talk to Counselor',
                   icon: Icons.support_agent_outlined,
-                  onTap: () {},
+                  onTap: () => Navigator.pushNamed(context, AppRoutes.chatList),
                 ),
                 _QuickCard(
                   title: 'Self Help Resources',
                   icon: Icons.menu_book_outlined,
-                  onTap: () {},
+                  onTap: () =>
+                      Navigator.pushNamed(context, AppRoutes.resources),
                 ),
                 _QuickCard(
                   title: 'Emergency Support',
                   icon: Icons.emergency_outlined,
-                  onTap: () {},
+                  onTap: () =>
+                      Navigator.pushNamed(context, AppRoutes.crisisSupport),
                 ),
               ],
             ),
+            const SizedBox(height: 12),
+            ExpansionTile(
+              title: const Text('Need immediate help?'),
+              children: [
+                ListTile(
+                  title: const Text('National Suicide Prevention Line'),
+                  subtitle: const Text('+256 (0) 800 123 456'),
+                  trailing: const Icon(Icons.call_outlined),
+                  onTap: () =>
+                      Navigator.pushNamed(context, AppRoutes.crisisSupport),
+                ),
+                ListTile(
+                  title: const Text('Open Crisis Support Tools'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () =>
+                      Navigator.pushNamed(context, AppRoutes.crisisSupport),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              'Recent Activity',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+            ),
+            const ListTile(
+              contentPadding: EdgeInsets.zero,
+              title: Text('Upcoming appointment: Tue 2:00 PM'),
+              subtitle: Text('Dr. Daniel Kofi'),
+            ),
+            const ListTile(
+              contentPadding: EdgeInsets.zero,
+              title: Text('Unread message from Dr. Sarah Mensah'),
+              subtitle: Text('Tap Talk to Counselor to open.'),
+            ),
+            Card(
+              color: const Color(0xFFEAF6FB),
+              child: const Padding(
+                padding: EdgeInsets.all(14),
+                child: Text(
+                  '“You are stronger than you think, and help is always available.”',
+                  style: TextStyle(fontStyle: FontStyle.italic),
+                ),
+              ),
+            ),
+            const SizedBox(height: 22),
+            const Center(child: DevelopedByFooter()),
           ],
         ),
       ),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _selectedBottomIndex,
-        onTap: (index) => setState(() => _selectedBottomIndex = index),
+        onTap: (index) {
+          setState(() => _selectedBottomIndex = index);
+          switch (index) {
+            case 1:
+              Navigator.pushNamed(context, AppRoutes.booking);
+              break;
+            case 2:
+              Navigator.pushNamed(context, AppRoutes.chatList);
+              break;
+            case 3:
+              Navigator.pushNamed(context, AppRoutes.moodTracker);
+              break;
+            case 4:
+              Navigator.pushNamed(context, AppRoutes.profile);
+              break;
+            default:
+              break;
+          }
+        },
         selectedItemColor: AppColors.primaryTeal,
         unselectedItemColor: Colors.black45,
         items: const [
@@ -105,12 +268,16 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
             label: 'Home',
           ),
           BottomNavigationBarItem(
+            icon: Icon(Icons.calendar_month_outlined),
+            label: 'Appointments',
+          ),
+          BottomNavigationBarItem(
             icon: Icon(Icons.chat_bubble_outline),
-            label: 'Counselor',
+            label: 'Chat',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.favorite_outline),
-            label: 'Wellness',
+            label: 'Mood',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.person_outline),
@@ -182,6 +349,29 @@ class _QuickCard extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _MoodChip extends StatelessWidget {
+  const _MoodChip({
+    required this.index,
+    required this.label,
+    required this.selectedMood,
+    required this.onSelected,
+  });
+
+  final int index;
+  final String label;
+  final int? selectedMood;
+  final ValueChanged<int> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    return ChoiceChip(
+      label: Text(label),
+      selected: selectedMood == index,
+      onSelected: (_) => onSelected(index),
     );
   }
 }
